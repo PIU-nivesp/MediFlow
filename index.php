@@ -1,3 +1,7 @@
+<?php
+header("Location: login.php");
+exit;
+?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -231,7 +235,7 @@
   
       <!-- Logo -->
       <div class="d-flex align-items-center">
-        <img style="width: 85px;" class="me-2" src="logo.png" />
+        <img style="width: 85px;" class="me-2" src="img/logo.png" />
       </div>
     
       <!-- Ícones centralizados -->

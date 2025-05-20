@@ -1,3 +1,45 @@
+<?php
+session_start();
+
+// Conexão com o banco de dados
+$host = 'localhost';
+$db = 'DB_MEDIFLOW'; // Nome do banco correto
+$user = 'root';
+$pass = 'usbw';
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Erro na conexão: " . $e->getMessage());
+}
+
+// Verifica se os dados foram enviados
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $usuario = $_POST['usuario'];
+    $senha = $_POST['senha'];
+
+    // Busca por email ou nome no banco
+    $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE email = :usuario OR nome = :usuario LIMIT 1");
+    $stmt->bindParam(':usuario', $usuario);
+    $stmt->execute();
+
+    $usuarioEncontrado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Verifica se encontrou usuário e se a senha bate
+    if ($usuarioEncontrado && password_verify($senha, $usuarioEncontrado['senha_hash'])) {
+        // Login bem-sucedido
+        $_SESSION['usuario_id'] = $usuarioEncontrado['id'];
+        $_SESSION['nome'] = $usuarioEncontrado['nome'];
+        $_SESSION['cargo'] = $usuarioEncontrado['cargo'];
+
+        header("Location: index.php");
+        exit;
+    } else {
+        echo "<script>alert('Usuário ou senha incorretos!'); window.location.href='index.html';</script>";
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -5,6 +47,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login</title>
   <style>
+    /* Seu CSS permanece igual */
     * {
       box-sizing: border-box;
       font-family: Arial, sans-serif;
@@ -99,22 +142,23 @@
 </head>
 <body>
   <div class="login-container">
-    <img src="C:\Users\renat\Downloads\PI\LOGO.png" alt="Logo" class="logo" />
+    <!-- Sugestão: coloque as imagens na pasta do projeto e use caminho relativo -->
+    <img src="img/LOGO.png" alt="Logo" class="logo" />
     <h2>Efetue seu login</h2>
     <div class="social-buttons">
       <div class="social-button">
-        <img src="C:\Users\renat\Downloads\PI\goog.png" alt="Google" />
+        <img src="img/goog.png" alt="Google" />
       </div>
       <div class="social-button">
-        <img src="C:\Users\renat\Downloads\PI\fac.png" alt="Facebook" />
+        <img src="img/fac.png" alt="Facebook" />
       </div>
     </div>
-      <form action="login.php" method="POST">
+    <form action="login.php" method="POST">
       <input type="text" name="usuario" placeholder="E-mail ou Usuario" required />
       <input type="password" name="senha" placeholder="Senha" required />
       <button class="login-button" type="submit">Acessar</button>
-      </form>
-      <div class="forgot-password">
+    </form>
+    <div class="forgot-password">
       Esqueceu sua senha? <a href="#">Clique aqui</a>
     </div>
   </div>
