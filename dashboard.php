@@ -2,10 +2,33 @@
 
 session_start();
 
+if (isset($_POST['logout'])) {
+    session_destroy(); // Encerra a sessão
+    header("Location: index.php"); // Redireciona
+    exit;
+}
+
 if (!isset($_SESSION['usuario_id'])) {
     header("Location: index.php");
     exit;
 }
+
+$conn = new mysqli("localhost", "root", "usbw", "DB_MEDIFLOW");
+
+if ($conn->connect_error) {
+    die("Erro de conexão: " . $conn->connect_error);
+}
+
+$usuario_id = $_SESSION['usuario_id'];
+$sql = "SELECT nome FROM usuarios WHERE id = $usuario_id";
+$result = $conn->query($sql);
+
+$nome_usuario = "Usuário";
+if ($result && $result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    $nome_usuario = htmlspecialchars($row['nome']);
+}
+
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['dispensar'])) {
     $conn = new mysqli("localhost", "root", "usbw", "DB_MEDIFLOW");
@@ -289,6 +312,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['excluir_remedio'])) {
       margin-top: 20px;
       font-weight: bold;
     }
+
+    .bem-vindo-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 300px;
+    }
+
+    .text-white {
+      white-space: normal !important;
+    }
+
+
   </style>
 </head>
 
@@ -426,11 +462,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['excluir_remedio'])) {
         <img style="width: 45px;" src="img/medicine.png" />
       </div>
     
-      <!-- Notificação + Botão -->
-      <div class="d-flex align-items-center gap-2">
+      <!-- Notificação + Botões -->
+      <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end" style="max-width: 45%; overflow: visible;">
         <img src="img/notificacao.png" class="me-2">
-        <button class="btn-dispensar">Dispensar Remédio</button>
+        <span class="text-white me-2" style="min-width: 130px;">Bem-vindo, <?= $nome_usuario ?>!</span>
+        <button class="btn-dispensar" onclick="abrirPopup()">Dispensar Remédio</button>
+        <form method="POST" action="" style="margin: 0;">
+          <button type="submit" name="logout" class="btn btn-secondary">Sair</button>
+        </form>
       </div>
+
+
     
     </div>
   </div>
