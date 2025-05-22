@@ -78,6 +78,45 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['adicionar_estoque']))
     echo "<script>alert('Estoque atualizado com sucesso!'); location.href=location.href;</script>";
 }
 
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['excluir_remedio'])) {
+    $conn = new mysqli("localhost", "root", "usbw", "DB_MEDIFLOW");
+
+    if ($conn->connect_error) {
+        die("Erro de conexão: " . $conn->connect_error);
+    }
+
+    $excluir = $_POST["excluir"];
+
+    foreach ($excluir as $medicamento_id => $valor) {
+        $medicamento_id = (int)$medicamento_id;
+
+        // Buscar quantidade atual
+        $res = $conn->query("SELECT quantidade FROM estoque WHERE medicamento_id = $medicamento_id");
+        if ($res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            $quantidade_atual = (int)$row["quantidade"];
+
+            if ($quantidade_atual > 0) {
+                // Zerar estoque
+                $conn->query("UPDATE estoque SET quantidade = 0 WHERE medicamento_id = $medicamento_id");
+
+                // Registrar movimentação
+                $stmt = $conn->prepare("
+                    INSERT INTO movimentacoes (medicamento_id, tipo, quantidade, observacao)
+                    VALUES (?, 'saida', ?, ?)
+                ");
+                $obs = "Exclusão manual - estoque zerado";
+                $stmt->bind_param("iis", $medicamento_id, $quantidade_atual, $obs);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+    }
+
+    $conn->close();
+    echo "<script>alert('Medicamentos excluídos com sucesso!'); location.href=location.href;</script>";
+}
+
 
 ?>
 
@@ -192,8 +231,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['adicionar_estoque']))
       display: flex;
       flex-wrap: wrap;
       gap: 15px;
-      justify-content: center;
-      margin-bottom: 80px;
+      justify-content: flex-start;
+      margin-bottom: 10px;
+      max-height: 250px;
+      overflow-y: auto;
     }
 
     .sem-estoque-title{
@@ -205,9 +246,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['adicionar_estoque']))
       border-radius: 15px;
       padding: 15px;
       display: flex;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 15px;
-      margin-bottom: 80px;
+      margin-bottom: 10px;
+      max-height: 250px;
+      overflow-y: auto;
     }
 
     .remedio-card {
@@ -272,6 +315,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['adicionar_estoque']))
         FROM medicamentos m
         INNER JOIN estoque e ON m.id = e.medicamento_id
         WHERE e.quantidade > 0
+        ORDER BY m.nome ASC
       ";
 
       $result = $conn->query($sql);
@@ -312,7 +356,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['adicionar_estoque']))
         <!-- Os medicamentos serão preenchidos via PHP -->
         <?php
         $conn = new mysqli("localhost", "root", "usbw", "DB_MEDIFLOW");
-        $sql = "SELECT id, nome, imagem FROM medicamentos";
+        $sql = "SELECT id, nome, imagem FROM medicamentos ORDER BY nome ASC";
         $res = $conn->query($sql);
         if ($res->num_rows > 0) {
             while ($row = $res->fetch_assoc()) {
@@ -329,6 +373,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['adicionar_estoque']))
 
       <button type="submit" name="adicionar_estoque" class="btn btn-primary">Adicionar</button>
       <button type="button" class="btn btn-secondary ms-2" onclick="fecharPopupCadastrar()">Cancelar</button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal para Excluir Remédio do Estoque -->
+<div id="popupExcluir" class="overlay">
+  <div class="popup-form">
+    <h4>Excluir Remédio (Zerar Estoque)</h4>
+    <form method="POST" action="">
+      <div class="mb-3">
+        <label class="form-label">Selecione os remédios a excluir</label>
+        <?php
+        $conn = new mysqli("localhost", "root", "usbw", "DB_MEDIFLOW");
+        $sql = "SELECT m.id, m.nome, m.imagem, e.quantidade FROM medicamentos m INNER JOIN estoque e ON m.id = e.medicamento_id WHERE e.quantidade > 0 ORDER BY m.nome ASC";
+        $res = $conn->query($sql);
+        if ($res->num_rows > 0) {
+            while ($row = $res->fetch_assoc()) {
+                echo '<div class="d-flex align-items-center mb-2">';
+                echo '<img src="img/' . htmlspecialchars($row["imagem"]) . '" style="width: 50px; height: 50px; object-fit: cover; margin-right: 10px;">';
+                echo '<span class="me-2" style="min-width: 150px;">' . htmlspecialchars($row["nome"]) . ' (' . $row["quantidade"] . ' unidades)</span>';
+                echo '<input type="checkbox" name="excluir[' . $row["id"] . ']" value="1">';
+                echo '</div>';
+            }
+        } else {
+            echo "<p>Sem medicamentos disponíveis para excluir.</p>";
+        }
+        $conn->close();
+        ?>
+      </div>
+      <button type="submit" name="excluir_remedio" class="btn btn-primary">Excluir</button>
+      <button type="button" class="btn btn-secondary ms-2" onclick="fecharPopupExcluir()">Cancelar</button>
     </form>
   </div>
 </div>
@@ -377,6 +452,7 @@ $sql = "
     FROM medicamentos m
     INNER JOIN estoque e ON m.id = e.medicamento_id
     WHERE e.quantidade > 0
+    ORDER BY m.nome ASC
 ";
 $result = $conn->query($sql);
 
@@ -413,6 +489,7 @@ $conn->close();
           FROM medicamentos m
           INNER JOIN estoque e ON m.id = e.medicamento_id
           WHERE e.quantidade = 0
+          ORDER BY m.nome ASC
       ";
       $result_sem_estoque = $conn->query($sql_sem_estoque);
 
@@ -435,7 +512,7 @@ $conn->close();
     <!-- Gerenciador -->
     <div class="gerenciador-title mt-4">Gerenciador</div>
     <div class="d-flex gap-2 my-2">
-      <button class="btn-dispensar" id="btn-cadastrar-remedio">Cadastrar Remédio</button>
+      <button class="btn-dispensar" id="btn-cadastrar-remedio">Adicionar Remédio</button>
       <button class="btn btn-excluir">EXCLUIR REMÉDIO</button>
     </div>
     <a href="#" class="text-primary">VER TODOS →</a>
@@ -490,6 +567,20 @@ $conn->close();
     }
   </script>
 
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const botaoExcluir = document.querySelector(".btn-excluir");
+      const popupExcluir = document.getElementById("popupExcluir");
+
+      botaoExcluir.addEventListener("click", function () {
+        popupExcluir.style.display = "flex";
+      });
+    });
+
+    function fecharPopupExcluir() {
+      document.getElementById("popupExcluir").style.display = "none";
+    }
+  </script>
 
 </body>
 </html>
