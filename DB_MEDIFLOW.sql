@@ -175,10 +175,7 @@ INSERT INTO `estoque` (`medicamento_id`, `quantidade`, `alerta_minimo`) VALUES
 (20, 0, 10),
 (21, 0, 10);
 
-INSERT INTO usuarios (nome, email, senha_hash, cargo)
-VALUES (
-    'teste',
-    'teste@example.com',
-    SHA2('12345', 256),
-    'farmaceutico'
-);
+-- senha do ADM adm123
+INSERT INTO `usuarios` (`nome`, `email`, `senha_hash`, `cargo`) VALUES
+('ADM', 'adm@medflow.com.br', 'fcef631eab0be0f69d940e737b136e0cbcf4f6f1de81f50822862002655af92e', 'admin'),
+('Renato', 'Re@gmail.com', '5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5', 'farmaceutico');
